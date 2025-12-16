@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SOS Comércio Local</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .story-ring {
+            background: linear-gradient(45deg, #f59e0b, #ef4444);
+            padding: 2px;
+            border-radius: 50%;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container pb-20">
+
+        <!-- Header -->
+        <header class="bg-white sticky top-0 z-50 px-4 py-3 shadow-sm flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-sm">SOS</div>
+                <div class="flex flex-col">
+                    <span class="text-xs text-gray-500">Localização atual</span>
+                    <span class="font-bold text-sm text-gray-800 flex items-center gap-1">
+                        Canoas, RS <i class="fas fa-chevron-down text-xs"></i>
+                    </span>
+                </div>
+            </div>
+            <button onclick="showNotifications()" class="text-gray-600 relative">
+                <i class="fas fa-bell text-xl"></i>
+                <span class="absolute top-0 right-0 bg-red-500 w-2 h-2 rounded-full"></span>
+            </button>
+        </header>
+
+        <!-- LOGIN PAGE -->
+        <div id="login-page" class="page">
+            <div class="flex flex-col items-center justify-center min-h-[80vh] px-6">
+                <div class="bg-blue-600 text-white p-6 rounded-3xl font-bold text-4xl mb-4">SOS</div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">SOS Comércio Local</h1>
+                <p class="text-gray-500 text-center mb-8">Conecte-se com comércios da sua região</p>
+
+                <div class="w-full max-w-sm">
+                    <button onclick="signInWithGoogle()"
+                        class="w-full bg-white border-2 border-gray-300 text-gray-700 py-3 px-6 rounded-lg font-medium flex items-center justify-center gap-3 hover:bg-gray-50 transition shadow-sm">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M19.8 10.2273C19.8 9.51817 19.7364 8.8364 19.6182 8.18176H10.2V12.0509H15.5818C15.3273 13.3 14.5455 14.3591 13.3864 15.0682V17.5773H16.7182C18.6636 15.8364 19.8 13.2727 19.8 10.2273Z"
+                                fill="#4285F4" />
+                            <path
+                                d="M10.2 20C12.9 20 15.1727 19.1045 16.7182 17.5773L13.3864 15.0682C12.4182 15.6682 11.1909 16.0227 10.2 16.0227C7.59545 16.0227 5.38182 14.2636 4.52727 11.9H1.07273V14.4909C2.60909 17.5409 6.16364 20 10.2 20Z"
+                                fill="#34A853" />
+                            <path
+                                d="M4.52727 11.9C4.30909 11.3 4.18182 10.6591 4.18182 10C4.18182 9.34091 4.30909 8.7 4.52727 8.1V5.50909H1.07273C0.390909 6.85909 0 8.38636 0 10C0 11.6136 0.390909 13.1409 1.07273 14.4909L4.52727 11.9Z"
+                                fill="#FBBC05" />
+                            <path
+                                d="M10.2 3.97727C11.2909 3.97727 12.2727 4.32273 13.0455 5.06364L16.0091 2.1C15.1682 1.34091 12.9 0 10.2 0C6.16364 0 2.60909 2.45909 1.07273 5.50909L4.52727 8.1C5.38182 5.73636 7.59545 3.97727 10.2 3.97727Z"
+                                fill="#EA4335" />
+                        </svg>
+                        Entrar com Google
+                    </button>
+
+                    <p class="text-xs text-gray-400 text-center mt-6">Ao continuar, você concorda com nossos Termos de
+                        Serviço e Política de Privacidade</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- REGISTRATION PAGE (Complete Profile) -->
+        <div id="registration-page" class="page px-4 pt-6 pb-24 overflow-y-auto">
+            <div class="max-w-md mx-auto">
+                <div class="text-center mb-6">
+                    <div class="bg-blue-600 text-white p-4 rounded-2xl font-bold text-2xl inline-block mb-3">SOS</div>
+                    <h2 class="text-2xl font-bold text-gray-800">Complete seu Cadastro</h2>
+                    <p class="text-gray-500 text-sm mt-2">Precisamos de mais algumas informações</p>
+                </div>
+
+                <form id="registration-form" class="space-y-4">
+                    <!-- Nome Completo -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                        <input type="text" id="reg-name" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="Seu nome completo">
+                    </div>
+
+                    <!-- Celular -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Celular *</label>
+                        <input type="tel" id="reg-phone" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="(00) 00000-0000" maxlength="15">
+                    </div>
+
+                    <!-- Email de Recuperação -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email de Recuperação *</label>
+                        <input type="email" id="reg-recovery-email" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="seu-email@example.com">
+                    </div>
+
+                    <!-- CEP -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">CEP *</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="reg-cep" required
+                                class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                placeholder="00000-000" maxlength="9">
+                            <button type="button" onclick="searchCEP()"
+                                class="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <p id="cep-error" class="text-xs text-red-500 mt-1 hidden">CEP não encontrado</p>
+                    </div>
+
+                    <!-- Estado -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
+                        <select id="reg-state" required onchange="loadCities()"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">Selecione o estado</option>
+                            <option value="AC">Acre</option>
+                            <option value="AL">Alagoas</option>
+                            <option value="AP">Amapá</option>
+                            <option value="AM">Amazonas</option>
+                            <option value="BA">Bahia</option>
+                            <option value="CE">Ceará</option>
+                            <option value="DF">Distrito Federal</option>
+                            <option value="ES">Espírito Santo</option>
+                            <option value="GO">Goiás</option>
+                            <option value="MA">Maranhão</option>
+                            <option value="MT">Mato Grosso</option>
+                            <option value="MS">Mato Grosso do Sul</option>
+                            <option value="MG">Minas Gerais</option>
+                            <option value="PA">Pará</option>
+                            <option value="PB">Paraíba</option>
+                            <option value="PR">Paraná</option>
+                            <option value="PE">Pernambuco</option>
+                            <option value="PI">Piauí</option>
+                            <option value="RJ">Rio de Janeiro</option>
+                            <option value="RN">Rio Grande do Norte</option>
+                            <option value="RS">Rio Grande do Sul</option>
+                            <option value="RO">Rondônia</option>
+                            <option value="RR">Roraima</option>
+                            <option value="SC">Santa Catarina</option>
+                            <option value="SP">São Paulo</option>
+                            <option value="SE">Sergipe</option>
+                            <option value="TO">Tocantins</option>
+                        </select>
+                    </div>
+
+                    <!-- Cidade -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cidade *</label>
+                        <select id="reg-city" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <option value="">Selecione a cidade</option>
+                        </select>
+                        <p id="city-loading" class="text-xs text-gray-500 mt-1 hidden">
+                            <i class="fas fa-spinner fa-spin mr-1"></i> Carregando cidades...
+                        </p>
+                    </div>
+
+                    <!-- Botão Salvar -->
+                    <button type="submit"
+                        class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition mt-6">
+                        Completar Cadastro
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- HOME PAGE -->
+        <div id="home-page" class="page active">
+            <!-- Stories -->
+            <div class="px-4 mt-4">
+                <h3 class="font-bold text-gray-700 text-sm mb-2">Destaques da Região</h3>
+                <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2" id="stories-container">
+                    <!-- Stories will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Category Filters -->
+            <div class="px-4 mt-2 flex gap-2 overflow-x-auto hide-scrollbar" id="category-filters">
+                <button onclick="filterCategory('all')"
+                    class="category-btn bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm whitespace-nowrap"
+                    data-category="all">Tudo</button>
+                <button onclick="filterCategory('food')"
+                    class="category-btn bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-sm whitespace-nowrap border"
+                    data-category="food">Comida</button>
+                <button onclick="filterCategory('services')"
+                    class="category-btn bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-sm whitespace-nowrap border"
+                    data-category="services">Serviços</button>
+                <button onclick="filterCategory('health')"
+                    class="category-btn bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-sm whitespace-nowrap border"
+                    data-category="health">Saúde</button>
+            </div>
+
+            <!-- Urgent Requests -->
+            <div class="mx-4 mt-6 p-4 bg-red-50 rounded-xl border border-red-100">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-bold text-red-600 text-sm"><i class="fas fa-exclamation-circle mr-1"></i> Pedidos
+                        Urgentes</h3>
+                    <span class="text-xs text-red-400 cursor-pointer" onclick="showAllUrgent()">Ver todos</span>
+                </div>
+                <div id="urgent-requests">
+                    <!-- Urgent requests will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Flash Offers -->
+            <div class="px-4 mt-6">
+                <h3 class="font-bold text-gray-800 text-lg mb-3">Ofertas Relâmpago ⚡</h3>
+                <div id="offers-container">
+                    <!-- Offers will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SEARCH PAGE -->
+        <div id="search-page" class="page px-4 pt-4">
+            <h2 class="text-2xl font-bold mb-4">Buscar</h2>
+            <input type="text" id="search-input" placeholder="Buscar ofertas, serviços..."
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                oninput="performSearch()">
+            <div id="search-results"></div>
+        </div>
+
+        <!-- CHAT PAGE -->
+        <div id="chat-page" class="page px-4 pt-4">
+            <h2 class="text-2xl font-bold mb-4">Conversas</h2>
+            <p class="text-gray-500 text-center py-8">Nenhuma conversa ainda</p>
+        </div>
+
+        <!-- PROFILE PAGE -->
+        <div id="profile-page" class="page px-4 pt-4">
+            <h2 class="text-2xl font-bold mb-4">Meu Perfil</h2>
+            <div class="bg-white rounded-xl shadow-sm border p-4" id="profile-content">
+                <!-- Profile content will be loaded here -->
+            </div>
+
+            <div class="mt-4">
+                <h3 class="font-bold text-gray-700 mb-3">Minhas Atividades</h3>
+                <div class="bg-white rounded-xl shadow-sm border p-4">
+                    <div class="flex items-center justify-between py-2 border-b">
+                        <span class="text-sm text-gray-600">Ofertas criadas</span>
+                        <span class="font-bold text-blue-600">0</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b">
+                        <span class="text-sm text-gray-600">Pedidos respondidos</span>
+                        <span class="font-bold text-blue-600">0</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2">
+                        <span class="text-sm text-gray-600">Avaliação média</span>
+                        <span class="font-bold text-yellow-500">⭐ -</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav
+        class="fixed bottom-0 w-full max-w-[480px] bg-white border-t border-gray-200 flex justify-around py-3 pb-safe z-50 left-1/2 -translate-x-1/2">
+        <button onclick="showPage('home')" class="nav-btn flex flex-col items-center text-blue-600" data-page="home">
+            <i class="fas fa-home text-xl mb-1"></i>
+            <span class="text-[10px] font-medium">Início</span>
+        </button>
+        <button onclick="showPage('search')"
+            class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600" data-page="search">
+            <i class="fas fa-search text-xl mb-1"></i>
+            <span class="text-[10px] font-medium">Buscar</span>
+        </button>
+        <button onclick="createPost()"
+            class="relative -top-6 bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition">
+            <i class="fas fa-plus text-xl"></i>
+        </button>
+        <button onclick="showPage('chat')" class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600"
+            data-page="chat">
+            <i class="fas fa-comments text-xl mb-1"></i>
+            <span class="text-[10px] font-medium">Chat</span>
+        </button>
+        <button onclick="showPage('profile')"
+            class="nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600" data-page="profile">
+            <i class="fas fa-user text-xl mb-1"></i>
+            <span class="text-[10px] font-medium">Perfil</span>
+        </button>
+    </nav>
+
+    <!-- Modal for Offer Details -->
+    <div id="offer-modal" class="modal" onclick="closeModal('offer-modal')">
+        <div class="modal-content fade-in w-full max-w-md p-6" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="modal-title"></h3>
+                <button onclick="closeModal('offer-modal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal for Urgent Request Response -->
+    <div id="urgent-modal" class="modal" onclick="closeModal('urgent-modal')">
+        <div class="modal-content fade-in w-full max-w-md p-6" onclick="event.stopPropagation()">
+            <h3 class="text-xl font-bold mb-4">Responder Pedido</h3>
+            <textarea id="response-text" class="w-full border border-gray-300 rounded-lg p-3 mb-4" rows="4"
+                placeholder="Digite sua resposta..."></textarea>
+            <div class="flex gap-2">
+                <button onclick="closeModal('urgent-modal')"
+                    class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg">Cancelar</button>
+                <button onclick="sendResponse()" class="flex-1 bg-blue-600 text-white py-2 rounded-lg">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDWLUWdrO6xKLyZsQJtj8ytCdwD9IA2qc0",
+            authDomain: "sos-comercio-local.firebaseapp.com",
+            projectId: "sos-comercio-local",
+            storageBucket: "sos-comercio-local.firebasestorage.app",
+            messagingSenderId: "549575552526",
+            appId: "1:549575552526:web:0da23d8a8ae4b2f65d165f"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Current user state
+        let currentUser = null;
+
+        // Listeners for real-time updates
+        let offersListener = null;
+        let urgentRequestsListener = null;
+
+        // Data
+        const stories = [
+            { name: 'Mercado Zé', seed: 'Mercado', active: true },
+            { name: 'FarmaVida', seed: 'Farmacia', active: true },
+            { name: 'PetShop', seed: 'Pet', active: false },
+            { name: 'Padaria', seed: 'Padaria', active: true },
+        ];
+
+        const offers = [
+            {
+                id: 1,
+                category: 'food',
+                title: 'X-Salada Duplo + Refri',
+                store: 'Lancheria do Gaúcho',
+                location: 'Centro',
+                price: 22.90,
+                oldPrice: 35.00,
+                image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=60',
+                expires: '02:45h',
+                badge: 'Alimentação'
+            },
+            {
+                id: 2,
+                category: 'services',
+                title: 'Limpeza de Ar Condicionado',
+                store: 'Clima Tech',
+                location: 'Marechal Rondon',
+                price: 99.00,
+                oldPrice: 150.00,
+                image: 'https://images.unsplash.com/photo-1581235720704-06d3acfcb36f?auto=format&fit=crop&w=500&q=60',
+                expires: '05:30h',
+                badge: 'Serviços'
+            },
+            {
+                id: 3,
+                category: 'food',
+                title: 'Pizza Grande + 2L Refri',
+                store: 'Pizzaria Bella',
+                location: 'Niterói',
+                price: 45.90,
+                oldPrice: 68.00,
+                image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=500&q=60',
+                expires: '01:20h',
+                badge: 'Alimentação'
+            },
+            {
+                id: 4,
+                category: 'health',
+                title: 'Consulta Odontológica',
+                store: 'Clínica Sorriso',
+                location: 'Centro',
+                price: 80.00,
+                oldPrice: 150.00,
+                image: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=500&q=60',
+                expires: '12:00h',
+                badge: 'Saúde'
+            }
+        ];
+
+        const urgentRequests = [
+            { id: 1, neighborhood: 'Bairro Niterói', time: '10 min', text: 'Alguém conhece um chaveiro 24h?' },
+            { id: 2, neighborhood: 'Centro', time: '25 min', text: 'Preciso de encanador urgente!' },
+            { id: 3, neighborhood: 'Mathias Velho', time: '1h', text: 'Veterinário aberto aos domingos?' }
+        ];
+
+        let currentCategory = 'all';
+
+        // ====== AUTHENTICATION FUNCTIONS ======
+
+        // Google Sign-In
+        async function signInWithGoogle() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                await auth.signInWithPopup(provider);
+            } catch (error) {
+                console.error('Erro no login:', error);
+                alert('Erro ao fazer login: ' + error.message);
+            }
+        }
+
+        // Sign Out
+        async function signOut() {
+            try {
+                await auth.signOut();
+                showPage('home');
+                alert('Você saiu da sua conta!');
+            } catch (error) {
+                console.error('Erro ao sair:', error);
+                alert('Erro ao sair: ' + error.message);
+            }
+        }
+
+        // Check authentication required
+        function requireAuth(action) {
+            if (!currentUser) {
+                alert('Você precisa fazer login para realizar esta ação!');
+                document.getElementById('login-page').classList.add('active');
+                document.getElementById('home-page').classList.remove('active');
+                return false;
+            }
+            return true;
+        }
+
+        // ====== REGISTRATION FUNCTIONS ======
+
+        // Apply phone mask
+        document.addEventListener('DOMContentLoaded', () => {
+            const phoneInput = document.getElementById('reg-phone');
+            const cepInput = document.getElementById('reg-cep');
+
+            if (phoneInput) {
+                phoneInput.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length > 11) value = value.slice(0, 11);
+
+                    if (value.length > 6) {
+                        value = `(${value.slice(0, 2)}) ${value.slice(2, 7)}-${value.slice(7)}`;
+                    } else if (value.length > 2) {
+                        value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+                    } else if (value.length > 0) {
+                        value = `(${value}`;
+                    }
+
+                    e.target.value = value;
+                });
+            }
+
+            if (cepInput) {
+                cepInput.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length > 8) value = value.slice(0, 8);
+
+                    if (value.length > 5) {
+                        value = `${value.slice(0, 5)}-${value.slice(5)}`;
+                    }
+
+                    e.target.value = value;
+                });
+
+                // Auto search on complete
+                cepInput.addEventListener('blur', () => {
+                    if (cepInput.value.replace(/\D/g, '').length === 8) {
+                        searchCEP();
+                    }
+                });
+            }
+
+            // Form submission
+            const regForm = document.getElementById('registration-form');
+            if (regForm) {
+                regForm.addEventListener('submit', handleRegistrationSubmit);
+            }
+        });
+
+        // Search CEP using ViaCEP API
+        async function searchCEP() {
+            const cepInput = document.getElementById('reg-cep');
+            const cep = cepInput.value.replace(/\D/g, '');
+            const errorEl = document.getElementById('cep-error');
+
+            if (cep.length !== 8) {
+                errorEl.textContent = 'CEP deve ter 8 dígitos';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            errorEl.classList.add('hidden');
+
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+
+                if (data.erro) {
+                    errorEl.textContent = 'CEP não encontrado';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                // Fill state
+                const stateSelect = document.getElementById('reg-state');
+                stateSelect.value = data.uf;
+
+                // Load cities and then select the city
+                await loadCities();
+
+                // Select city
+                setTimeout(() => {
+                    const citySelect = document.getElementById('reg-city');
+                    const cityOptions = Array.from(citySelect.options);
+                    const cityOption = cityOptions.find(opt =>
+                        opt.value.toLowerCase() === data.localidade.toLowerCase()
+                    );
+                    if (cityOption) {
+                        citySelect.value = cityOption.value;
+                    }
+                }, 500);
+
+                console.log('CEP encontrado:', data);
+            } catch (error) {
+                console.error('Erro ao buscar CEP:', error);
+                errorEl.textContent = 'Erro ao buscar CEP';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // Load cities based on selected state using IBGE API
+        async function loadCities() {
+            const stateSelect = document.getElementById('reg-state');
+            const citySelect = document.getElementById('reg-city');
+            const loadingEl = document.getElementById('city-loading');
+            const state = stateSelect.value;
+
+            if (!state) {
+                citySelect.innerHTML = '<option value="">Selecione a cidade</option>';
+                return;
+            }
+
+            loadingEl.classList.remove('hidden');
+            citySelect.disabled = true;
+
+            try {
+                const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${state}/municipios`);
+                const cities = await response.json();
+
+                citySelect.innerHTML = '<option value="">Selecione a cidade</option>';
+                cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city.nome;
+                    option.textContent = city.nome;
+                    citySelect.appendChild(option);
+                });
+
+                citySelect.disabled = false;
+                loadingEl.classList.add('hidden');
+            } catch (error) {
+                console.error('Erro ao carregar cidades:', error);
+                citySelect.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+                loadingEl.classList.add('hidden');
+            }
+        }
+
+        // Handle registration form submission
+        async function handleRegistrationSubmit(e) {
+            e.preventDefault();
+
+            if (!currentUser) {
+                alert('Erro: usuário não está logado');
+                return;
+            }
+
+            const formData = {
+                nome: document.getElementById('reg-name').value.trim(),
+                celular: document.getElementById('reg-phone').value,
+                emailRecuperacao: document.getElementById('reg-recovery-email').value.trim(),
+                cep: document.getElementById('reg-cep').value,
+                estado: document.getElementById('reg-state').value,
+                cidade: document.getElementById('reg-city').value,
+                cadastroCompleto: true,
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Validation
+            if (!formData.nome || !formData.celular || !formData.emailRecuperacao ||
+                !formData.cep || !formData.estado || !formData.cidade) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            try {
+                // Save to Firestore
+                await db.collection('usuarios').doc(currentUser.uid).set(formData, { merge: true });
+
+                alert('Cadastro completado com sucesso!');
+
+                // Redirect to home
+                document.getElementById('registration-page').classList.remove('active');
+                document.getElementById('home-page').classList.add('active');
+
+                // Update navigation
+                document.querySelectorAll('.nav-btn').forEach(btn => {
+                    btn.className = 'nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600';
+                });
+                document.querySelector('[data-page="home"]').className = 'nav-btn flex flex-col items-center text-blue-600';
+
+            } catch (error) {
+                console.error('Erro ao salvar cadastro:', error);
+                alert('Erro ao salvar cadastro: ' + error.message);
+            }
+        }
+
+        // Check if user needs to complete registration
+        async function checkRegistrationStatus(user) {
+            try {
+                const userDoc = await db.collection('usuarios').doc(user.uid).get();
+                const userData = userDoc.data();
+
+                if (!userData || !userData.cadastroCompleto) {
+                    // Show registration form
+                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                    document.getElementById('registration-page').classList.add('active');
+
+                    // Pre-fill name from Google
+                    if (user.displayName) {
+                        document.getElementById('reg-name').value = user.displayName;
+                    }
+                    if (user.email) {
+                        document.getElementById('reg-recovery-email').value = user.email;
+                    }
+
+                    return false; // Registration not complete
+                }
+
+                return true; // Registration complete
+            } catch (error) {
+                console.error('Erro ao verificar cadastro:', error);
+                return false;
+            }
+        }
+
+        // Edit profile - load user data into registration form
+        async function editProfile() {
+            try {
+                const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+                const userData = userDoc.data();
+
+                if (!userData) {
+                    alert('Erro ao carregar dados do usuário');
+                    return;
+                }
+
+                // Pre-fill form with current data
+                document.getElementById('reg-name').value = userData.nome || currentUser.displayName || '';
+                document.getElementById('reg-phone').value = userData.celular || '';
+                document.getElementById('reg-recovery-email').value = userData.emailRecuperacao || currentUser.email || '';
+                document.getElementById('reg-cep').value = userData.cep || '';
+                document.getElementById('reg-state').value = userData.estado || '';
+
+                // Load cities for the state
+                if (userData.estado) {
+                    await loadCities();
+                    // Wait a bit for cities to load, then select the city
+                    setTimeout(() => {
+                        document.getElementById('reg-city').value = userData.cidade || '';
+                    }, 500);
+                }
+
+                // Show registration page
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById('registration-page').classList.add('active');
+
+            } catch (error) {
+                console.error('Erro ao carregar dados para edição:', error);
+                alert('Erro ao carregar dados: ' + error.message);
+            }
+        }
+
+        // Auth state observer
+        auth.onAuthStateChanged(async user => {
+            currentUser = user;
+
+            if (user) {
+                console.log('Usuário logado:', user.displayName);
+
+                // Save/update basic user data in Firestore
+                await saveUserData(user);
+
+                // Check if registration is complete
+                const registrationComplete = await checkRegistrationStatus(user);
+
+                if (!registrationComplete) {
+                    // User needs to complete registration - already redirected by checkRegistrationStatus
+                    return;
+                }
+
+                // Hide login page, show home
+                document.getElementById('login-page').classList.remove('active');
+                if (!document.querySelector('.page.active')) {
+                    document.getElementById('home-page').classList.add('active');
+                }
+
+                // Start real-time listeners
+                startOffersListener();
+                startUrgentRequestsListener();
+
+                updateProfilePage();
+            } else {
+                console.log('Usuário não logado');
+
+                // Stop listeners
+                if (offersListener) offersListener();
+                if (urgentRequestsListener) urgentRequestsListener();
+
+                // Show login page
+                document.getElementById('login-page').classList.add('active');
+                document.getElementById('home-page').classList.remove('active');
+                document.querySelectorAll('.page:not(#login-page)').forEach(p => p.classList.remove('active'));
+
+                // Load sample data for non-logged users
+                loadStoriesStatic();
+            }
+        });
+
+        // Update profile page with user data
+        function updateProfilePage() {
+            const profileContent = document.getElementById('profile-content');
+
+            if (!currentUser) {
+                profileContent.innerHTML = `
+            <p class="text-gray-500 text-center py-8">Você precisa fazer login</p>
+        `;
+                return;
+            }
+
+            profileContent.innerHTML = `
+        <div class="flex items-center gap-4 mb-4">
+            <img src="${currentUser.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + currentUser.uid}" 
+                 class="w-20 h-20 rounded-full border-2 border-blue-500">
+            <div class="flex-1">
+                <h3 class="font-bold text-lg">${currentUser.displayName || 'Usuário'}</h3>
+                <p class="text-sm text-gray-500">${currentUser.email}</p>
+            </div>
+        </div>
+        <div class="space-y-2">
+            <button onclick="editProfile()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                <i class="fas fa-edit mr-2"></i> Editar Cadastro
+            </button>
+            <button onclick="signOut()" class="w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition">
+                <i class="fas fa-sign-out-alt mr-2"></i> Sair da Conta
+            </button>
+        </div>
+    `;
+        }
+
+        // ====== FIRESTORE DATABASE FUNCTIONS ======
+
+        // Save user data to Firestore
+        async function saveUserData(user) {
+            try {
+                await db.collection('usuarios').doc(user.uid).set({
+                    nome: user.displayName,
+                    email: user.email,
+                    foto: user.photoURL,
+                    ultimoLogin: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            } catch (error) {
+                console.error('Erro ao salvar usuário:', error);
+            }
+        }
+
+        // Start real-time listener for offers
+        function startOffersListener() {
+            offersListener = db.collection('ofertas')
+                .orderBy('criadoEm', 'desc')
+                .limit(20)
+                .onSnapshot(snapshot => {
+                    const offersContainer = document.getElementById('offers-container');
+                    const offersData = [];
+
+                    snapshot.forEach(doc => {
+                        offersData.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    renderOffers(offersData);
+                }, error => {
+                    console.error('Erro ao carregar ofertas:', error);
+                    // Fallback to sample data
+                    renderOffers(offers);
+                });
+        }
+
+        // Start real-time listener for urgent requests
+        function startUrgentRequestsListener() {
+            urgentRequestsListener = db.collection('pedidosUrgentes')
+                .where('status', '==', 'ativo')
+                .orderBy('criadoEm', 'desc')
+                .limit(10)
+                .onSnapshot(snapshot => {
+                    const requestsData = [];
+
+                    snapshot.forEach(doc => {
+                        requestsData.push({ id: doc.id, ...doc.data() });
+                    });
+
+                    renderUrgentRequests(requestsData);
+                }, error => {
+                    console.error('Erro ao carregar pedidos:', error);
+                    renderUrgentRequests(urgentRequests);
+                });
+        }
+
+        // Create new offer
+        async function createOffer(offerData, imageFile) {
+            if (!requireAuth()) return;
+
+            try {
+                let imageUrl = offerData.imagem;
+
+                // Upload image if provided
+                if (imageFile) {
+                    const fileName = `ofertas/${currentUser.uid}/${Date.now()}_${imageFile.name}`;
+                    const storageRef = storage.ref(fileName);
+                    const uploadTask = await storageRef.put(imageFile);
+                    imageUrl = await uploadTask.ref.getDownloadURL();
+                }
+
+                // Save offer to Firestore
+                await db.collection('ofertas').add({
+                    titulo: offerData.titulo,
+                    categoria: offerData.categoria,
+                    loja: offerData.loja,
+                    localizacao: offerData.localizacao,
+                    preco: parseFloat(offerData.preco),
+                    precoAntigo: parseFloat(offerData.precoAntigo),
+                    imagem: imageUrl,
+                    expiraEm: offerData.expiraEm,
+                    badge: offerData.badge,
+                    usuarioId: currentUser.uid,
+                    usuarioNome: currentUser.displayName,
+                    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update user stats
+                await db.collection('usuarios').doc(currentUser.uid).update({
+                    ofertasCriadas: firebase.firestore.FieldValue.increment(1)
+                });
+
+                alert('Oferta criada com sucesso!');
+            } catch (error) {
+                console.error('Erro ao criar oferta:', error);
+                alert('Erro ao criar oferta: ' + error.message);
+            }
+        }
+
+        // Create urgent request
+        async function createUrgentRequest(requestText) {
+            if (!requireAuth()) return;
+
+            try {
+                await db.collection('pedidosUrgentes').add({
+                    texto: requestText,
+                    bairro: 'Centro', // TODO: Get from user location
+                    usuarioId: currentUser.uid,
+                    usuarioNome: currentUser.displayName,
+                    usuarioFoto: currentUser.photoURL,
+                    status: 'ativo',
+                    respostas: [],
+                    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert('Pedido urgente enviado!');
+            } catch (error) {
+                console.error('Erro ao criar pedido:', error);
+                alert('Erro ao criar pedido: ' + error.message);
+            }
+        }
+
+        // Send response to urgent request
+        async function sendResponseToRequest(requestId, responseText) {
+            if (!requireAuth()) return;
+
+            try {
+                await db.collection('pedidosUrgentes').doc(requestId).update({
+                    respostas: firebase.firestore.FieldValue.arrayUnion({
+                        usuarioId: currentUser.uid,
+                        usuarioNome: currentUser.displayName,
+                        usuarioFoto: currentUser.photoURL,
+                        texto: responseText,
+                        criadoEm: new Date().toISOString()
+                    })
+                });
+
+                // Update user stats
+                await db.collection('usuarios').doc(currentUser.uid).update({
+                    pedidosRespondidos: firebase.firestore.FieldValue.increment(1)
+                });
+
+                alert(`Resposta enviada por ${currentUser.displayName}!`);
+            } catch (error) {
+                console.error('Erro ao enviar resposta:', error);
+                alert('Erro ao enviar resposta: ' + error.message);
+            }
+        }
+
+        // Load user stats for profile
+        async function loadUserStats() {
+            if (!currentUser) return;
+
+            try {
+                const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+                const userData = userDoc.data();
+
+                return {
+                    ofertasCriadas: userData?.ofertasCriadas || 0,
+                    pedidosRespondidos: userData?.pedidosRespondidos || 0,
+                    avaliacaoMedia: userData?.avaliacaoMedia || 0
+                };
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+                return { ofertasCriadas: 0, pedidosRespondidos: 0, avaliacaoMedia: 0 };
+            }
+        }
+
+        // ====== APP INITIALIZATION ======
+
+        function init() {
+            loadStories();
+            loadOffers();
+            loadUrgentRequests();
+        }
+
+        // Load stories
+        function loadStories() {
+            const container = document.getElementById('stories-container');
+            container.innerHTML = stories.map(story => `
+        <div class="flex flex-col items-center gap-1 min-w-[70px] cursor-pointer" onclick="alert('Story de ${story.name}')">
+            <div class="${story.active ? 'story-ring' : 'w-15 h-15 p-[2px] rounded-full bg-gray-200'}">
+                <img src="https://api.dicebear.com/7.x/initials/svg?seed=${story.seed}" 
+                     class="w-14 h-14 rounded-full border-2 border-white bg-gray-100">
+            </div>
+            <span class="text-xs font-medium truncate w-16 text-center ${story.active ? '' : 'text-gray-500'}">${story.name}</span>
+        </div>
+    `).join('');
+        }
+
+        // Render offers (works with both Firestore and static data)
+        function renderOffers(offersData) {
+            const container = document.getElementById('offers-container');
+            const filteredOffers = currentCategory === 'all'
+                ? offersData
+                : offersData.filter(o => (o.categoria || o.category) === currentCategory);
+
+            if (filteredOffers.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nenhuma oferta disponível nesta categoria</p>';
+                return;
+            }
+
+            container.innerHTML = filteredOffers.map(offer => {
+                // Support both Firestore and static data field names
+                const title = offer.titulo || offer.title;
+                const category = offer.categoria || offer.category;
+                const store = offer.loja || offer.store;
+                const location = offer.localizacao || offer.location;
+                const price = offer.preco || offer.price;
+                const oldPrice = offer.precoAntigo || offer.oldPrice;
+                const image = offer.imagem || offer.image;
+                const expires = offer.expiraEm || offer.expires;
+                const badge = offer.badge;
+                const offerId = offer.id;
+
+                return `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
+            <div class="h-32 bg-gray-200 relative">
+                <img src="${image}" class="w-full h-full object-cover">
+                <span class="absolute top-2 left-2 ${getCategoryColor(category)} text-white text-xs font-bold px-2 py-1 rounded">${badge}</span>
+                <span class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">Expira em ${expires}</span>
+            </div>
+            <div class="p-3">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-bold text-gray-800">${title}</h4>
+                        <p class="text-xs text-gray-500">${store} • ${location}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-gray-400 line-through">R$ ${oldPrice.toFixed(2)}</span>
+                        <div class="text-lg font-bold text-green-600">R$ ${price.toFixed(2)}</div>
+                    </div>
+                </div>
+                <div class="mt-3 flex gap-2">
+                    ${category === 'food'
+                        ? `<button onclick="orderViaWhatsApp('${title}')" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition">
+                             <i class="fab fa-whatsapp mr-1"></i> Pedir
+                           </button>`
+                        : `<button onclick="openChat('${store}')" class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium">
+                             <i class="fas fa-comment-dots mr-1"></i> Chat
+                           </button>`
+                    }
+                    <button onclick="showOfferDetails('${offerId}')" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+            }).join('');
+        }
+
+        // Render urgent requests (works with both Firestore and static data)
+        function renderUrgentRequests(requestsData) {
+            const container = document.getElementById('urgent-requests');
+            const displayRequests = requestsData.slice(0, 3);
+
+            if (displayRequests.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Nenhum pedido urgente no momento</p>';
+                return;
+            }
+
+            container.innerHTML = displayRequests.map(req => {
+                const neighborhood = req.bairro || req.neighborhood;
+                const text = req.texto || req.text;
+                const time = req.time || 'Agora';
+                const reqId = req.id;
+
+                return `
+        <div class="bg-white p-3 rounded-lg shadow-sm mb-2 border-l-4 border-red-400">
+            <div class="flex justify-between">
+                <span class="text-xs font-bold text-gray-500">${neighborhood} • Há ${time}</span>
+            </div>
+            <p class="text-gray-800 text-sm font-medium mt-1">${text}</p>
+            <button onclick="respondUrgent('${reqId}')" class="mt-2 text-xs text-blue-600 font-bold uppercase">Responder</button>
+        </div>
+    `;
+            }).join('');
+        }
+
+        // Load stories (static  data)
+        function loadStoriesStatic() {
+            const container = document.getElementById('stories-container');
+            container.innerHTML = stories.map(story => `
+        <div class="flex flex-col items-center gap-1 min-w-[70px] cursor-pointer" onclick="alert('Story de ${story.name}')">
+            <div class="${story.active ? 'story-ring' : 'w-15 h-15 p-[2px] rounded-full bg-gray-200'}">
+                <img src="https://api.dicebear.com/7.x/initials/svg?seed=${story.seed}" 
+                     class="w-14 h-14 rounded-full border-2 border-white bg-gray-100">
+            </div>
+            <span class="text-xs font-medium truncate w-16 text-center ${story.active ? '' : 'text-gray-500'}">${story.name}</span>
+        </div>
+    `).join('');
+        }
+
+        // Filter by category
+        function filterCategory(category) {
+            currentCategory = category;
+
+            // Update button styles
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                if (btn.dataset.category === category) {
+                    btn.className = 'category-btn bg-blue-600 text-white px-4 py-1.5 rounded-full text-sm whitespace-nowrap';
+                } else {
+                    btn.className = 'category-btn bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-sm whitespace-nowrap border';
+                }
+            });
+
+            // Trigger re-render with current data
+            if (currentUser) {
+                // Listeners will automatically update
+            } else {
+                renderOffers(offers);
+            }
+        }
+
+        // Navigation
+        function showPage(page) {
+            // Check if user needs to be logged in
+            if (page === 'profile' && !currentUser) {
+                alert('Faça login para ver seu perfil!');
+                document.getElementById('login-page').classList.add('active');
+                document.querySelectorAll('.page:not(#login-page)').forEach(p => p.classList.remove('active'));
+                return;
+            }
+
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+            // Show selected page
+            document.getElementById(`${page}-page`).classList.add('active');
+
+            // Update nav button styles
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.page === page) {
+                    btn.className = 'nav-btn flex flex-col items-center text-blue-600';
+                } else {
+                    btn.className = 'nav-btn flex flex-col items-center text-gray-400 hover:text-blue-600';
+                }
+            });
+        }
+
+        // Show offer details
+        function showOfferDetails(offerId) {
+            // Find offer in current data (handles both formats)
+            let offer = offers.find(o => o.id == offerId);
+
+            // If not found in static data and user is logged in, it might be from Firestore
+            if (!offer && currentUser) {
+                // Try to find in Firestore (will work if data is already loaded)
+                console.log('Looking for offer ID:', offerId);
+                // For now, skip showing details if not found
+                return;
+            }
+
+            if (!offer) return;
+
+            const title = offer.titulo || offer.title;
+            const category = offer.categoria || offer.category;
+            const store = offer.loja || offer.store;
+            const location = offer.localizacao || offer.location;
+            const price = offer.preco || offer.price;
+            const oldPrice = offer.precoAntigo || offer.oldPrice;
+            const image = offer.imagem || offer.image;
+            const expires = offer.expiraEm || offer.expires;
+
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').innerHTML = `
+        <img src="${image}" class="w-full h-48 object-cover rounded-lg mb-4">
+        <p class="text-sm text-gray-600 mb-2"><i class="fas fa-store mr-2"></i>${store}</p>
+        <p class="text-sm text-gray-600 mb-2"><i class="fas fa-map-marker-alt mr-2"></i>${location}</p>
+        <p class="text-sm text-gray-600 mb-4"><i class="fas fa-clock mr-2"></i>Expira em ${expires}</p>
+        <div class="bg-green-50 p-4 rounded-lg mb-4">
+            <div class="flex justify-between items-center">
+                <span class="text-sm text-gray-600 line-through">De R$ ${oldPrice.toFixed(2)}</span>
+                <span class="text-2xl font-bold text-green-600">R$ ${price.toFixed(2)}</span>
+            </div>
+            <p class="text-xs text-green-700 mt-2">Economia de R$ ${(oldPrice - price).toFixed(2)}</p>
+        </div>
+        ${category === 'food'
+                    ? `<button onclick="orderViaWhatsApp('${title}')" class="w-full bg-green-600 text-white py-3 rounded-lg font-medium">
+                 <i class="fab fa-whatsapp mr-2"></i> Pedir pelo WhatsApp
+               </button>`
+                    : `<button onclick="openChat('${store}')" class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium">
+                 <i class="fas fa-comment-dots mr-2"></i> Iniciar Conversa
+               </button>`
+                }
+    `;
+
+            document.getElementById('offer-modal').classList.add('active');
+        }
+
+        // Modal controls
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Respond to urgent request
+        async function respondUrgent(reqId) {
+            if (!requireAuth()) return;
+            document.getElementById('urgent-modal').classList.add('active');
+            // Store request ID for later use
+            document.getElementById('urgent-modal').dataset.requestId = reqId;
+        }
+
+        async function sendResponse() {
+            const text = document.getElementById('response-text').value;
+            const modalEl = document.getElementById('urgent-modal');
+            const requestId = modalEl.dataset.requestId;
+
+            if (text.trim() && requestId) {
+                await sendResponseToRequest(requestId, text);
+                document.getElementById('response-text').value = '';
+                closeModal('urgent-modal');
+            } else {
+                alert('Digite uma resposta válida');
+            }
+        }
+
+        // Show all urgent requests
+        function showAllUrgent() {
+            const container = document.getElementById('urgent-requests');
+            container.innerHTML = urgentRequests.map(req => `
+        <div class="bg-white p-3 rounded-lg shadow-sm mb-2 border-l-4 border-red-400">
+            <div class="flex justify-between">
+                <span class="text-xs font-bold text-gray-500">${req.neighborhood} • Há ${req.time}</span>
+            </div>
+            <p class="text-gray-800 text-sm font-medium mt-1">${req.text}</p>
+            <button onclick="respondUrgent(${req.id})" class="mt-2 text-xs text-blue-600 font-bold uppercase">Responder</button>
+        </div>
+    `).join('');
+        }
+
+        // Actions
+        function orderViaWhatsApp(item) {
+            const message = encodeURIComponent(`Olá! Gostaria de pedir: ${item}`);
+            window.open(`https://wa.me/5551999999999?text=${message}`, '_blank');
+        }
+
+        function openChat(store) {
+            if (!requireAuth()) return;
+            alert(`Abrindo chat com ${store}...`);
+            showPage('chat');
+        }
+
+        function createPost() {
+            if (!requireAuth()) return;
+
+            const choice = prompt('O que você quer criar?\n1 - Nova Oferta\n2 - Pedido Urgente');
+
+            if (choice === '1') {
+                // Show create offer form (simplified for demonstration)
+                const title = prompt('Título da oferta:');
+                if (!title) return;
+
+                const price = prompt('Preço com desconto (R$):');
+                const oldPrice = prompt('Preço original (R$):');
+
+                createOffer({
+                    titulo: title,
+                    categoria: 'food',
+                    loja: currentUser.displayName || 'Minha Loja',
+                    localizacao: 'Canoas',
+                    preco: price,
+                    precoAntigo: oldPrice,
+                    imagem: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+                    expiraEm: '24h',
+                    badge: 'Promoção'
+                });
+            } else if (choice === '2') {
+                const text = prompt('Descreva seu pedido urgente:');
+                if (text) {
+                    createUrgentRequest(text);
+                }
+            }
+        }
+
+        function showNotifications() {
+            alert('🔔 Notificações:\n\n• Nova oferta perto de você!\n• Alguém respondeu seu pedido\n• 3 novos stories disponíveis');
+        }
+
+        function performSearch() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const results = document.getElementById('search-results');
+
+            if (query.length < 2) {
+                results.innerHTML = '<p class="text-gray-400 text-center py-4">Digite para buscar...</p>';
+                return;
+            }
+
+            const filtered = offers.filter(o =>
+                o.title.toLowerCase().includes(query) ||
+                o.store.toLowerCase().includes(query) ||
+                o.badge.toLowerCase().includes(query)
+            );
+
+            if (filtered.length === 0) {
+                results.innerHTML = '<p class="text-gray-400 text-center py-4">Nenhum resultado encontrado</p>';
+                return;
+            }
+
+            results.innerHTML = filtered.map(offer => `
+        <div class="bg-white rounded-lg shadow-sm border p-3 mb-2 flex gap-3 cursor-pointer" onclick="showOfferDetails(${offer.id})">
+            <img src="${offer.image}" class="w-20 h-20 object-cover rounded-lg">
+            <div class="flex-1">
+                <h4 class="font-bold text-sm">${offer.title}</h4>
+                <p class="text-xs text-gray-500">${offer.store}</p>
+                <div class="text-green-600 font-bold mt-1">R$ ${offer.price.toFixed(2)}</div>
+            </div>
+        </div>
+    `).join('');
+        }
+
+        // Helper functions
+        function getCategoryColor(category) {
+            const colors = {
+                food: 'bg-green-500',
+                services: 'bg-blue-500',
+                health: 'bg-purple-500'
+            };
+            return colors[category] || 'bg-gray-500';
+        }
+
+        // Initialize app on load
+        init();
+    </script>
+
+</body>
+
+</html>
